@@ -671,13 +671,17 @@ function showTimer(label){
 }
 
 function setTimerTime(el,v){
+  if(timerStarted){
+    // 計時進行中，不允許更改
+    var msg=timerOvertime?'請先按「完成了！」才能更改時間。':'請先按「結束」才能更改時間。';
+    alert(msg);
+    return;
+  }
   selectedTime=v;
   document.querySelectorAll('.timer-time-chip').forEach(function(c){c.classList.remove('sel');});
   el.classList.add('sel');
-  if(!timerStarted){
-    timerTotal=v*60;timerRemaining=v*60;
-    updateTimerDisplay();
-  }
+  timerTotal=v*60;timerRemaining=v*60;
+  updateTimerDisplay();
 }
 
 function fmtTime(sec){
