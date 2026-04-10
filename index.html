@@ -624,21 +624,25 @@ function selectOtherSubject(el,name){
 function showTimer(label){
   var box=document.getElementById('timer-box');
   box.style.display='block';
-  box.className='timer-box';
   document.getElementById('timer-subject-label').textContent=label;
   var key=(activeSubject||activeOtherSubject)+'::'+activeUnit;
   var saved=unitTimers[key]||0;
-  timerTotal=selectedTime*60;
-  // 恢復已累積的時間
-  if(saved>0){
-    var alreadyDone=Math.min(saved,timerTotal);
-    timerRemaining=timerTotal-alreadyDone;
-    timerOvertimeSec=saved>timerTotal?saved-timerTotal:0;
-    timerOvertime=timerOvertimeSec>0;
-  } else {
-    timerRemaining=timerTotal;timerOvertime=false;timerOvertimeSec=0;
+  // 只有在沒有進行中的計時時才重設
+  if(!timerStarted){
+    timerTotal=selectedTime*60;
+    if(saved>0){
+      var alreadyDone=Math.min(saved,timerTotal);
+      timerRemaining=timerTotal-alreadyDone;
+      timerOvertimeSec=saved>timerTotal?saved-timerTotal:0;
+      timerOvertime=timerOvertimeSec>0;
+      timerStarted=true;
+    } else {
+      timerRemaining=timerTotal;timerOvertime=false;timerOvertimeSec=0;
+    }
+    timerRunning=false;timerPaused=false;
   }
-  timerRunning=false;timerPaused=false;timerStarted=saved>0;
+  // 不管是否重設都更新顯示
+  box.className='timer-box'+(timerRunning?' running':(timerOvertime?' overtime':''));
   updateTimerDisplay();
   renderTimerBtns();
   updatePending();
