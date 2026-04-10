@@ -1057,21 +1057,20 @@ function renderOne(child,isVivi){
     var baseline=getBaseline(s,statsPeriod);
     var fillClass='',barW=0,label1='',label2='';
     if(isAll){
-      // 全部模式：相對比例（最高科目=100%）
-      var realMax=Math.max.apply(null,ALL_SUBJECTS.map(function(s){return subjectMap[s];}).concat([1]));
-      barW=m>0?Math.round(m/realMax*100):0;
+      // 全部模式：佔比（圓餅圖概念，總和=100%）
+      var totalAll=Math.max(allMin,1);
+      barW=m>0?Math.round(m/totalAll*100):0;
       fillClass=m>0?cc:'zero';
       label1=m>0?m+'分':'—';
-      label2=m>0?Math.round(m/realMax*100)+'%':'';
+      label2=m>0?Math.round(m/totalAll*100)+'%':'';
     } else {
-      // 其他區間：達成率 + 佔比
-      var achievePct=baseline?Math.min(Math.round(m/baseline*100),100):0;
+      // 其他區間：進度條=佔比，標籤=達成率/佔比
       var sharePct=m>0?Math.round(m/totalPeriodMin*100):0;
-      barW=baseline?achievePct:(m>0?Math.round(m/maxAll*100):0);
+      var achievePct=baseline?Math.min(Math.round(m/baseline*100),100):0;
+      barW=sharePct; // 進度條用佔比
       if(m===0) barW=0;
       fillClass=baseline?(m>=baseline?'over':(m>0?cc:'zero')):(m>0?cc:'zero');
       label1=m>0?m+'分':'—';
-      // 達成率 + 佔比
       if(m>0&&baseline) label2=achievePct+'% / '+sharePct+'%';
       else if(m>0) label2=sharePct+'%';
       else label2='';
