@@ -695,21 +695,81 @@ function toggleTimer(){
         timerRemaining--;
         if(timerRemaining<=0){
           timerRemaining=0;timerOvertime=true;
-          // 只要設定時間>=5秒就播音效
           if(timerTotal>=5) playDone();
         }
       } else {timerOvertimeSec++;}
       updateTimerDisplay();renderTimerBtns();
+      if((timerTotal-timerRemaining+timerOvertimeSec)%5===0) saveTimerStateLocal();
     },1000);
   }
   updateTimerDisplay();renderTimerBtns();
 }
 
 function saveTimerStateLocal(){
-  try{localStorage.setItem('unitTimers',JSON.stringify(unitTimers));}catch(e){}
+  try{
+    localStorage.setItem('unitTimers',JSON.stringify(unitTimers));
+    localStorage.setItem('timerSession',JSON.stringify({
+      activeSubject:activeSubject,
+      activeUnit:activeUnit,
+      activeOtherSubject:activeOtherSubject,
+      selectedChild:selectedChild,
+      selectedTime:selectedTime,
+      timerRunning:false,
+      timerRemaining:timerRemaining,
+      timerTotal:timerTotal,
+      timerOvertime:timerOvertime,
+      timerOvertimeSec:timerOvertimeSec,
+      timerStarted:timerStarted
+    }));
+  }catch(e){}
 }
 function loadTimerStateLocal(){
-  try{var s=localStorage.getItem('unitTimers');if(s)unitTimers=JSON.parse(s);}catch(e){}
+  try{
+    var s=localStorage.getItem('unitTimers');
+    if(s) unitTimers=JSON.parse(s);
+    var sess=localStorage.getItem('timerSession');
+    if(sess){
+      var d=JSON.parse(sess);
+      if(d.selectedChild){
+        selectedChild=d.selectedChild;
+        selectedTime=d.selectedTime||25;
+        // 恢復孩子選取UI
+        document.getElementById('card-jung').classList.toggle('selected',selectedChild==='Jung');
+        document.getElementById('card-vivi').classList.toggle('selected',selectedChild==='Vivi');
+        // 恢復時間選取UI
+        document.querySelectorAll('.timer-time-chip').forEach(function(c){
+          c.classList.toggle('sel',parseInt(c.textContent)===selectedTime);
+        });
+      }
+      if(d.activeSubject&&d.activeUnit){
+        activeSubject=d.activeSubject;
+        activeUnit=d.activeUnit;
+        timerRemaining=d.timerRemaining||d.timerTotal||selectedTime*60;
+        timerTotal=d.timerTotal||selectedTime*60;
+        timerOvertime=d.timerOvertime||false;
+        timerOvertimeSec=d.timerOvertimeSec||0;
+        timerStarted=d.timerStarted||false;
+        // 顯示計時器
+        var box=document.getElementById('timer-box');
+        box.style.display='block';
+        document.getElementById('timer-subject-label').textContent=activeSubject+' › '+activeUnit;
+        updateTimerDisplay();
+        renderTimerBtns();
+      } else if(d.activeOtherSubject){
+        activeOtherSubject=d.activeOtherSubject;
+        timerRemaining=d.timerRemaining||d.timerTotal||selectedTime*60;
+        timerTotal=d.timerTotal||selectedTime*60;
+        timerOvertime=d.timerOvertime||false;
+        timerOvertimeSec=d.timerOvertimeSec||0;
+        timerStarted=d.timerStarted||false;
+        var box=document.getElementById('timer-box');
+        box.style.display='block';
+        document.getElementById('timer-subject-label').textContent=activeOtherSubject;
+        updateTimerDisplay();
+        renderTimerBtns();
+      }
+    }
+  }catch(e){}
 }
 
 function stopTimer(clearUnit){
