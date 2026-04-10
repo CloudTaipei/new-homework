@@ -561,7 +561,12 @@ function renderGoalsArea(){
       var isActive=activeSubject===subject&&activeUnit===g.unit;
       var bc=isActive?'active-timer':(g.done?doneClass:'');
       var se=subject.replace(/'/g,"\'"),ue=g.unit.replace(/'/g,"\'");
-      var uMins=g.done?50:getUnitMinutes(g.subject,g.unit);
+      var recordMins=g.done?50:getUnitMinutes(g.subject,g.unit);
+      var timerKey=g.subject+'::'+g.unit;
+      var timerData=unitTimers[timerKey];
+      var timerElapsed=timerData?(timerData.elapsed||timerData||0):0;
+      var timerMins=Math.floor(timerElapsed/60);
+      var uMins=Math.max(recordMins,timerMins);
       var waterH=Math.min(64,Math.round(uMins/50*64));
       html+='<div class="unit-block '+sg+' '+bc+'" '
         +'draggable="true" '
@@ -608,18 +613,26 @@ function clickUnit(subject,unit,isDone){
     markGoal(subject,unit,false);
     return;
   }
-  // 再點一次已選取的：取消選取
+  // 再點一次已選取的：取消選取（暫停並保留時間）
   if(activeSubject===subject&&activeUnit===unit){
-    stopTimer(false); // 暫停並保留時間
+    stopTimer(false);
+    timerStarted=false;timerRunning=false;timerOvertime=false;timerOvertimeSec=0;
     activeSubject='';activeUnit='';
+    document.getElementById('timer-box').style.display='none';
     renderGoalsArea();
     return;
   }
   // 切換科目：暫停目前計時，保留各自狀態
-  stopTimer(false);
+  stopTimer(false); // 儲存目前科目累積時間
+  // 重設計時器狀態，準備載入新科目
+  timerStarted=false;
+  timerRunning=false;
+  timerOvertime=false;
+  timerOvertimeSec=0;
   activeSubject=subject;activeUnit=unit;
   activeOtherSubject='';
   document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel-subject');});
+  // showTimer 會從 unitTimers 讀取新科目的累積時間
   showTimer(subject+' › '+unit);
   renderGoalsArea();
 }
@@ -635,7 +648,8 @@ function selectOtherSubject(el,name){
     activeOtherSubject='';el.classList.remove('sel-subject');
     stopTimer();return;
   }
-  stopTimer(false); // 暫停並保留時間
+  stopTimer(false); // 儲存目前科目累積時間
+  timerStarted=false;timerRunning=false;timerOvertime=false;timerOvertimeSec=0;
   document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel-subject');});
   activeOtherSubject=name;activeSubject='';activeUnit='';
   el.classList.add('sel-subject');
@@ -648,14 +662,23 @@ function showTimer(label){
   box.style.display='block';
   document.getElementById('timer-subject-label').textContent=label;
   var key=(activeSubject||activeOtherSubject)+'::'+activeUnit;
-  var saved=unitTimers[key]||0;
+  var savedData=unitTimers[key]||null;
+  var savedElapsed=savedData?(savedData.elapsed||savedData||0):0;
+  var savedTotal=savedData&&savedData.total?savedData.total:0;
   // 只有在沒有進行中的計時時才重設
   if(!timerStarted){
-    timerTotal=selectedTime*60;
-    if(saved>0){
-      var alreadyDone=Math.min(saved,timerTotal);
+    // 恢復該科目上次設定的時間，沒有就用 selectedTime
+    timerTotal=savedTotal>0?savedTotal:selectedTime*60;
+    // 同步更新 selectedTime 顯示
+    selectedTime=Math.round(timerTotal/60);
+    document.querySelectorAll('.timer-time-chip').forEach(function(c){
+      var chipTime=parseInt(c.textContent.replace('分',''));
+      c.classList.toggle('sel',chipTime===selectedTime);
+    });
+    if(savedElapsed>0){
+      var alreadyDone=Math.min(savedElapsed,timerTotal);
       timerRemaining=timerTotal-alreadyDone;
-      timerOvertimeSec=saved>timerTotal?saved-timerTotal:0;
+      timerOvertimeSec=savedElapsed>timerTotal?savedElapsed-timerTotal:0;
       timerOvertime=timerOvertimeSec>0;
       timerStarted=true;
     } else {
@@ -813,7 +836,7 @@ function stopTimer(clearUnit){
   if((activeSubject||activeOtherSubject)&&timerStarted){
     var key=(activeSubject||activeOtherSubject)+'::'+activeUnit;
     var elapsed=timerTotal-timerRemaining+timerOvertimeSec;
-    if(!clearUnit) unitTimers[key]=elapsed;
+    if(!clearUnit) unitTimers[key]={elapsed:elapsed,total:timerTotal};
     else delete unitTimers[key];
   }
   if(clearUnit){
