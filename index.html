@@ -416,12 +416,17 @@ var _leaveTime=null;
 })();
 
 function selectChild(n){
+  var isSame=selectedChild===n;
   selectedChild=n;
   document.getElementById('card-jung').classList.toggle('selected',n==='Jung');
   document.getElementById('card-vivi').classList.toggle('selected',n==='Vivi');
-  stopTimer();
-  activeSubject='';activeUnit='';activeOtherSubject='';
-  document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel-subject','sel-way');});
+  if(!isSame){
+    // 切換孩子才重設計時
+    stopTimer(true);
+    activeSubject='';activeUnit='';activeOtherSubject='';
+    unitTimers={};
+    document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel-subject','sel-way');});
+  }
   loadGoalsForChild();
   renderTodayBanner();
 }
@@ -738,7 +743,8 @@ function loadTimerStateLocal(){
         document.getElementById('card-vivi').classList.toggle('selected',selectedChild==='Vivi');
         // 恢復時間選取UI
         document.querySelectorAll('.timer-time-chip').forEach(function(c){
-          c.classList.toggle('sel',parseInt(c.textContent)===selectedTime);
+          var chipTime=parseInt(c.textContent.replace('分',''));
+          c.classList.toggle('sel',chipTime===selectedTime);
         });
       }
       if(d.activeSubject&&d.activeUnit){
@@ -1041,7 +1047,15 @@ function renderOne(child,isVivi){
     +'<div class="card"><div class="card-title">📝 進度紀錄</div>'+progHTML+'</div>';
 }
 
-loadAllStats();
+// 頁面載入時恢復狀態
+(async function(){
+  loadTimerStateLocal();
+  await loadAllStats();
+  // 如果有恢復的孩子，載入目標
+  if(selectedChild){
+    await loadGoalsForChild();
+  }
+})();
 </script>
 </body>
 </html>
