@@ -610,12 +610,13 @@ function clickUnit(subject,unit,isDone){
   }
   // 再點一次已選取的：取消選取
   if(activeSubject===subject&&activeUnit===unit){
-    stopTimer(false); // 保留累積時間
+    stopTimer(false); // 暫停並保留時間
     activeSubject='';activeUnit='';
     renderGoalsArea();
     return;
   }
-  stopTimer(false); // 切換時保留累積時間
+  // 切換科目：暫停目前計時，保留各自狀態
+  stopTimer(false);
   activeSubject=subject;activeUnit=unit;
   activeOtherSubject='';
   document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel-subject');});
@@ -634,7 +635,7 @@ function selectOtherSubject(el,name){
     activeOtherSubject='';el.classList.remove('sel-subject');
     stopTimer();return;
   }
-  stopTimer(false);
+  stopTimer(false); // 暫停並保留時間
   document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('sel-subject');});
   activeOtherSubject=name;activeSubject='';activeUnit='';
   el.classList.add('sel-subject');
@@ -672,7 +673,6 @@ function showTimer(label){
 
 function setTimerTime(el,v){
   if(timerStarted){
-    // 計時進行中，不允許更改
     var msg=timerOvertime?'請先按「完成了！」才能更改時間。':'請先按「結束」才能更改時間。';
     alert(msg);
     return;
