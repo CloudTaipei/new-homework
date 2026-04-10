@@ -382,32 +382,53 @@ var statsPeriod='today',cachedData={},goalsData={};
 var now=new Date();
 document.getElementById('today').textContent=now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日（週'+DAYS[now.getDay()]+'）';
 
-// Wake Lock + 背景補時
-var _leaveTime=null;
+// 背景補時：iOS Safari 用 pagehide/pageshow + localStorage 時間戳記
+function saveLeaveTime(){
+  if(timerRunning){
+    try{
+      localStorage.setItem('timerLeaveStamp', String(Date.now()));
+    }catch(e){}
+  }
+}
+function applyLeaveTime(){
+  try{
+    var stamp=localStorage.getItem('timerLeaveStamp');
+    if(!stamp) return;
+    localStorage.removeItem('timerLeaveStamp');
+    if(!timerStarted) return;
+    var away=Math.floor((Date.now()-parseInt(stamp))/1000);
+    if(away<=0||away>86400) return;
+    if(!timerOvertime){
+      timerRemaining=timerRemaining-away;
+      if(timerRemaining<=0){
+        timerOvertimeSec=Math.abs(timerRemaining);
+        timerRemaining=0;timerOvertime=true;
+        if(timerTotal>=5) playDone();
+      }
+    } else {
+      timerOvertimeSec+=away;
+    }
+    updateTimerDisplay();renderTimerBtns();
+    saveTimerStateLocal();
+  }catch(e){}
+}
+
+// pagehide: 頁面隱藏時存時間戳記
+window.addEventListener('pagehide',function(){saveLeaveTime();});
+// pageshow: 頁面顯示時補時
+window.addEventListener('pageshow',function(){applyLeaveTime();});
+// visibilitychange: 額外保險
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'){saveLeaveTime();}
+  else{applyLeaveTime();}
+});
+// Wake Lock
 (async function(){
   try{
     if('wakeLock' in navigator){
       var wl=await navigator.wakeLock.request('screen');
       document.addEventListener('visibilitychange',async function(){
-        if(document.visibilityState==='hidden'){
-          _leaveTime=Date.now();
-          try{localStorage.setItem('timerLeave',JSON.stringify({t:_leaveTime,running:timerRunning,remaining:timerRemaining,overtime:timerOvertime,overtimeSec:timerOvertimeSec,total:timerTotal,subject:activeSubject,unit:activeUnit,otherSubject:activeOtherSubject,selectedTime:selectedTime,selectedChild:selectedChild}));}catch(e){}
-        } else {
-          // 補算離開的時間
-          if(_leaveTime && timerRunning && !timerPaused){
-            var away=Math.floor((Date.now()-_leaveTime)/1000);
-            if(!timerOvertime){
-              timerRemaining-=away;
-              if(timerRemaining<=0){
-                timerOvertimeSec=Math.abs(timerRemaining);
-                timerRemaining=0;timerOvertime=true;playDone();
-              }
-            } else {
-              timerOvertimeSec+=away;
-            }
-            updateTimerDisplay();renderTimerBtns();
-          }
-          _leaveTime=null;
+        if(document.visibilityState==='visible'){
           try{wl=await navigator.wakeLock.request('screen');}catch(e){}
         }
       });
